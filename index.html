@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>L'enquête de Benjamin</title>
+<style>
+  :root {
+    --fond: #FFF8EE;
+    --carte: #FFFFFF;
+    --orange: #F5A04A;
+    --orange-clair: #FDEBD0;
+    --bleu: #1F4E79;
+    --vert: #2E8B57;
+    --vert-clair: #D5F5E3;
+    --alerte: #C96A00;
+    --alerte-clair: #FFE8CC;
+    --texte: #222222;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 21px; line-height: 1.6;
+    background: var(--fond); color: var(--texte);
+  }
+  main { max-width: 820px; margin: 0 auto; }
+  header.titre {
+    background: var(--orange-clair); border: 3px solid var(--orange);
+    border-radius: 16px; padding: 14px 20px; margin-bottom: 18px;
+  }
+  header.titre h1 { margin: 0; font-size: 30px; }
+  header.titre p { margin: 4px 0 0; font-size: 20px; }
+  .carte {
+    background: var(--carte); border: 2px solid #D9C3A5;
+    border-radius: 16px; padding: 18px 22px; margin-bottom: 16px;
+  }
+  .modalite { font-weight: bold; color: var(--bleu); }
+  .barre { display: flex; gap: 8px; margin-bottom: 14px; }
+  .barre span {
+    flex: 1; height: 14px; border-radius: 7px; background: #E8DCC8;
+  }
+  .barre span.fait { background: var(--vert); }
+  .barre span.courant { background: var(--orange); }
+  button, .bouton {
+    font-family: inherit; font-size: 21px;
+    min-height: 64px; padding: 12px 20px;
+    border-radius: 14px; border: 3px solid var(--bleu);
+    background: #FFFFFF; color: var(--texte);
+    cursor: pointer; text-align: left; width: 100%;
+    display: block; text-decoration: none;
+  }
+  button:hover, .bouton:hover { background: #EAF2FB; }
+  button:focus-visible, .bouton:focus-visible, input:focus-visible { outline: 4px solid #FFB74D; outline-offset: 2px; }
+  .principal {
+    background: var(--bleu); color: #FFFFFF; text-align: center; font-weight: bold;
+  }
+  .principal:hover { background: #17395A; }
+  .petit {
+    width: auto; display: inline-block; min-height: 52px; font-size: 19px;
+    margin: 4px 8px 4px 0; text-align: center;
+  }
+  .reponse { margin: 12px 0; }
+  .reponse.juste { background: var(--vert-clair); border-color: var(--vert); font-weight: bold; }
+  .reponse.faux { background: var(--alerte-clair); border-color: var(--alerte); }
+  .reponse[disabled] { cursor: default; }
+  .retour { margin: 10px 0; font-weight: bold; min-height: 34px; }
+  .retour.ok { color: var(--vert); }
+  .retour.non { color: var(--alerte); }
+  .histoire p { margin: 8px 0; padding-left: 14px; border-left: 6px solid var(--orange); }
+  .aide { background: #FFF8DC; border: 2px dashed #D8B94A; border-radius: 12px; padding: 10px 14px; margin: 10px 0; }
+  input[type=text] {
+    font-family: inherit; font-size: 22px; padding: 12px 14px; width: 100%;
+    border: 3px solid var(--bleu); border-radius: 12px; margin: 8px 0 14px;
+  }
+  .bilan li { margin-bottom: 10px; }
+  .cache { display: none; }
+  h2 { font-size: 26px; margin: 0 0 8px; }
+  .mot { font-size: 30px; font-weight: bold; color: var(--bleu); }
+  .ligne { display: flex; gap: 10px; align-items: stretch; margin: 12px 0; }
+  .ligne .reponse { margin: 0; flex: 1; }
+  .ecoute {
+    width: 72px; min-width: 72px; padding: 0; text-align: center;
+    font-size: 26px; border-radius: 14px; border: 3px solid var(--bleu);
+    background: #EAF2FB; min-height: 64px;
+  }
+  .ecoute-mini {
+    width: 56px; min-width: 56px; min-height: 48px; padding: 0; margin-right: 10px;
+    display: inline-block; text-align: center; font-size: 22px;
+    border-radius: 12px; border: 3px solid var(--bleu); background: #EAF2FB;
+    vertical-align: middle;
+  }
+  .voix {
+    background: #EAF2FB; border: 2px solid var(--bleu); border-radius: 14px;
+    padding: 8px 12px; margin-bottom: 14px;
+  }
+  .voix .titre-voix { font-weight: bold; margin-right: 8px; }
+  .voix button.petit { margin: 4px 6px 4px 0; }
+  button.actif { background: var(--bleu); color: #FFFFFF; }
+  .histoire .phrase { display: flex; align-items: center; margin: 8px 0; }
+  .histoire .phrase span { flex: 1; padding-left: 14px; border-left: 6px solid var(--orange); }
+</style>
+</head>
+<body>
+<main>
+  <header class="titre">
+    <h1>🕵️ L'enquête de Benjamin</h1>
+    <p>Je lis l'histoire, puis je réponds aux questions. <span class="modalite">🧑 Je travaille seul(e).</span></p>
+  </header>
+  <div class="voix" id="voix"></div>
+  <div id="ecran"></div>
+</main>
+
+<script>
+"use strict";
+
+var HISTOIRE = [
+  "Benjamin a 20 ans. Il est couvreur depuis un an.",
+  "Dès le trajet pour aller au travail, il fume.",
+  "Il est souvent distrait, absent par moments, et il s'énerve facilement.",
+  "Ce jour-là, à la pause de 10 heures, il fume un joint.",
+  "Ensuite, il remonte sur la toiture pour faire une soudure.",
+  "Il monte avec le fer à souder et la bouteille de gaz.",
+  "Distrait, il tire sans faire attention sur le tuyau.",
+  "La bouteille de gaz tombe sur un collègue. Le collègue tombe, assommé."
+];
+
+var QUESTIONS = [
+  {
+    icone: "👁️", mot: "Quoi ?", q: "Que s'est-il passé ?",
+    aide: "Relis la dernière phrase de l'histoire.",
+    juste: "Le collègue de Benjamin est tombé, assommé par une bouteille de gaz.",
+    faux: [
+      "Benjamin a glissé du toit en portant une échelle.",
+      "Le fer à souder a mis le feu à la toiture."
+    ],
+    bilan: "Le collègue de Benjamin est tombé, assommé par une bouteille de gaz."
+  },
+  {
+    icone: "🧑", mot: "Qui ?", q: "Qui est concerné par le problème ?",
+    aide: "Cherche le prénom, l'âge et le métier au début de l'histoire.",
+    juste: "Benjamin, couvreur de 20 ans, et son collègue sont concernés.",
+    faux: [
+      "Un cuisinier de 20 ans et une cliente sont concernés.",
+      "Un professeur de 40 ans et ses élèves sont concernés."
+    ],
+    bilan: "Benjamin, couvreur de 20 ans, et son collègue."
+  },
+  {
+    icone: "📍", mot: "Où ?", q: "Où a lieu le problème ?",
+    aide: "Pense au métier de Benjamin : où travaille un couvreur ?",
+    juste: "Le problème a lieu sur un chantier, sur une toiture.",
+    faux: [
+      "Le problème a lieu dans une cuisine de restaurant.",
+      "Le problème a lieu dans une salle de classe."
+    ],
+    bilan: "Sur un chantier, sur une toiture."
+  },
+  {
+    icone: "🗓️", mot: "Quand ?", q: "À quel moment de la journée est arrivé l'accident ?",
+    aide: "Cherche l'heure dans l'histoire.",
+    juste: "L'accident est arrivé après la pause de 10 heures.",
+    faux: [
+      "L'accident est arrivé avant le trajet pour aller au travail.",
+      "L'accident est arrivé le soir, à la fin de la journée."
+    ],
+    bilan: "Après la pause de 10 heures."
+  },
+  {
+    icone: "⚙️", mot: "Comment ?", q: "De quelle manière est apparu le problème ?",
+    aide: "Que fait Benjamin avant de monter sur le toit ? Que provoque cela chez lui ?",
+    juste: "Benjamin a fumé un joint, il a perdu sa concentration et la bouteille de gaz est tombée.",
+    faux: [
+      "Benjamin avait trop chaud, il s'est évanoui et la bouteille de gaz est tombée.",
+      "Le matériel était en mauvais état et il s'est cassé tout seul."
+    ],
+    bilan: "L'accident est dû à la consommation de cannabis de Benjamin : il a perdu sa concentration."
+  },
+  {
+    icone: "❓", mot: "Pourquoi ?", q: "Pourquoi faut-il résoudre le problème ?",
+    aide: "Pense à la santé de Benjamin, de son collègue et des autres personnes.",
+    juste: "Il faut le résoudre pour éviter d'autres accidents et préserver la santé de tous.",
+    faux: [
+      "Il faut le résoudre pour que le chantier finisse plus vite.",
+      "Il faut le résoudre pour que Benjamin change de métier."
+    ],
+    bilan: "Pour éviter d'autres accidents et préserver sa santé et celle des autres."
+  }
+];
+
+var ecran = document.getElementById("ecran");
+var prenom = "";
+var numero = 0;
+var vitesse = 0.9;   // voix normale
+var VITESSE_LENTE = 0.65;
+
+function peutLire() {
+  try { return "speechSynthesis" in window; } catch (e) { return false; }
+}
+
+function arreter() {
+  try { if (peutLire()) { window.speechSynthesis.cancel(); } } catch (e) {}
+}
+
+function lire(texte) {
+  try {
+    if (!peutLire()) { return; }
+    window.speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(texte);
+    u.lang = "fr-FR";
+    u.rate = vitesse;
+    window.speechSynthesis.speak(u);
+  } catch (e) { /* pas de lecture vocale disponible */ }
+}
+
+function melanger(liste) {
+  var t = liste.slice();
+  for (var i = t.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var x = t[i]; t[i] = t[j]; t[j] = x;
+  }
+  return t;
+}
+
+function el(tag, classe, html) {
+  var e = document.createElement(tag);
+  if (classe) { e.className = classe; }
+  if (html !== undefined) { e.innerHTML = html; }
+  return e;
+}
+
+function vider() {
+  arreter();
+  ecran.innerHTML = "";
+  window.scrollTo(0, 0);
+}
+
+// Petit bouton « écouter » avec son texte
+function boutonEcoute(texte, mini, etiquette) {
+  var b = el("button", mini ? "ecoute-mini" : "ecoute", "🔊");
+  b.type = "button";
+  b.setAttribute("aria-label", etiquette || "Écouter");
+  b.title = etiquette || "Écouter";
+  b.onclick = function (ev) { ev.stopPropagation(); lire(texte); };
+  return b;
+}
+
+// Barre de réglage de la voix (toujours visible)
+function construireBarreVoix() {
+  var zone = document.getElementById("voix");
+  zone.innerHTML = "";
+  if (!peutLire()) {
+    zone.appendChild(el("span", "", "🔇 La lecture à voix haute n'est pas disponible sur cet appareil."));
+    return;
+  }
+  zone.appendChild(el("span", "titre-voix", "🔊 La voix :"));
+  var bLent = el("button", "petit", "🐢 Lente");
+  var bNormal = el("button", "petit", "🙂 Normale");
+  var bStop = el("button", "petit", "⏹️ Arrêter");
+  function maj() {
+    bLent.className = "petit" + (vitesse === VITESSE_LENTE ? " actif" : "");
+    bNormal.className = "petit" + (vitesse !== VITESSE_LENTE ? " actif" : "");
+  }
+  bLent.onclick = function () { vitesse = VITESSE_LENTE; maj(); lire("Je lis lentement."); };
+  bNormal.onclick = function () { vitesse = 0.9; maj(); lire("Je lis normalement."); };
+  bStop.onclick = arreter;
+  maj();
+  zone.appendChild(bLent);
+  zone.appendChild(bNormal);
+  zone.appendChild(bStop);
+}
+
+function afficherAccueil() {
+  vider();
+  var c = el("section", "carte");
+  c.appendChild(el("h2", "", "Bienvenue, enquêteur !"));
+  var intro = "Un accident est arrivé sur un chantier. Ton travail : comprendre ce qui s'est passé.";
+  var p = el("p", "", "");
+  if (peutLire()) { p.appendChild(boutonEcoute(intro, true, "Écouter le texte")); }
+  p.appendChild(document.createTextNode(intro));
+  c.appendChild(p);
+  c.appendChild(el("p", "", "<strong>Mon prénom :</strong>"));
+  var champ = el("input");
+  champ.type = "text";
+  champ.setAttribute("aria-label", "Mon prénom");
+  champ.autocomplete = "off";
+  c.appendChild(champ);
+  var b = el("button", "principal", "Commencer l'enquête ➜");
+  b.onclick = function () { prenom = champ.value.trim(); afficherHistoire(); };
+  c.appendChild(b);
+  ecran.appendChild(c);
+}
+
+function afficherHistoire() {
+  vider();
+  var c = el("section", "carte histoire");
+  c.appendChild(el("h2", "", "📖 L'histoire de Benjamin"));
+  HISTOIRE.forEach(function (phrase) {
+    var ligne = el("div", "phrase");
+    if (peutLire()) { ligne.appendChild(boutonEcoute(phrase, true, "Écouter cette phrase")); }
+    ligne.appendChild(el("span", "", phrase));
+    c.appendChild(ligne);
+  });
+  var zone = el("div");
+  if (peutLire()) {
+    var b1 = el("button", "petit", "🔊 Écouter toute l'histoire");
+    b1.onclick = function () { lire(HISTOIRE.join(" ")); };
+    zone.appendChild(b1);
+  }
+  var lien = el("a", "bouton petit", "▶️ Voir la vidéo (2 min)");
+  lien.href = "https://www.youtube.com/watch?v=eKvYx1qTPd8";
+  lien.target = "_blank";
+  lien.rel = "noopener";
+  zone.appendChild(lien);
+  c.appendChild(zone);
+  ecran.appendChild(c);
+  var suite = el("button", "principal", "J'ai lu l'histoire, je continue ➜");
+  suite.onclick = function () { numero = 0; afficherQuestion(); };
+  ecran.appendChild(suite);
+}
+
+function afficherQuestion() {
+  vider();
+  var Q = QUESTIONS[numero];
+
+  var barre = el("div", "barre");
+  for (var i = 0; i < QUESTIONS.length; i++) {
+    barre.appendChild(el("span", i < numero ? "fait" : (i === numero ? "courant" : "")));
+  }
+  ecran.appendChild(barre);
+
+  var c = el("section", "carte");
+  c.appendChild(el("div", "mot", Q.icone + " " + Q.mot));
+  c.appendChild(el("h2", "", Q.q));
+
+  var options = melanger([Q.juste].concat(Q.faux));
+
+  if (peutLire()) {
+    var bl = el("button", "petit", "🔊 Écouter la question et les réponses");
+    bl.onclick = function () {
+      lire(Q.q + " Réponse un. " + options[0] + " Réponse deux. " + options[1] + " Réponse trois. " + options[2]);
+    };
+    c.appendChild(bl);
+  }
+
+  var retour = el("div", "retour");
+  retour.setAttribute("aria-live", "polite");
+
+  var boutons = [];
+  options.forEach(function (texte) {
+    var ligne = el("div", "ligne");
+    var b = el("button", "reponse", texte);
+    b.onclick = function () {
+      if (texte === Q.juste) {
+        b.className = "reponse juste";
+        retour.className = "retour ok";
+        retour.textContent = "✅ Oui, bravo !";
+        boutons.forEach(function (x) { x.disabled = true; });
+        suivant.className = "principal";
+        suivant.style.display = "block";
+        lire("Oui, bravo !");
+      } else {
+        b.className = "reponse faux";
+        b.disabled = true;
+        retour.className = "retour non";
+        retour.textContent = "Pas tout à fait. Relis, puis essaie une autre réponse.";
+        lire("Pas tout à fait. Relis, puis essaie une autre réponse.");
+      }
+    };
+    boutons.push(b);
+    ligne.appendChild(b);
+    if (peutLire()) { ligne.appendChild(boutonEcoute(texte, false, "Écouter cette réponse")); }
+    c.appendChild(ligne);
+  });
+  c.appendChild(retour);
+
+  var aide = el("div", "aide cache", "");
+  aide.appendChild(el("span", "", "💡 <strong>Aide :</strong> " + Q.aide));
+  if (peutLire()) { aide.appendChild(document.createTextNode(" ")); aide.appendChild(boutonEcoute("Aide. " + Q.aide, true, "Écouter l'aide")); }
+  var ba = el("button", "petit", "💡 J'ai besoin d'une aide");
+  ba.onclick = function () { aide.className = "aide"; ba.style.display = "none"; };
+  c.appendChild(ba);
+  c.appendChild(aide);
+  ecran.appendChild(c);
+
+  var suivant = el("button", "", (numero === QUESTIONS.length - 1) ? "Voir ce que j'ai trouvé ➜" : "Question suivante ➜");
+  suivant.style.display = "none";
+  suivant.onclick = function () {
+    numero++;
+    if (numero < QUESTIONS.length) { afficherQuestion(); } else { afficherFin(); }
+  };
+  ecran.appendChild(suivant);
+}
+
+function afficherFin() {
+  vider();
+  var barre = el("div", "barre");
+  QUESTIONS.forEach(function () { barre.appendChild(el("span", "fait")); });
+  ecran.appendChild(barre);
+
+  var c = el("section", "carte");
+  var nom = prenom ? (" " + prenom) : "";
+  c.appendChild(el("h2", "", "🎉 Bravo" + nom + " !"));
+  c.appendChild(el("p", "", "Tu es arrivé(e) au bout de l'enquête de Benjamin. Voici ce que tu as trouvé :"));
+  var liste = el("ul", "bilan");
+  var texteLu = "Bravo" + nom + ". Tu es arrivé au bout de l'enquête de Benjamin. Voici ce que tu as trouvé. ";
+  QUESTIONS.forEach(function (Q) {
+    liste.appendChild(el("li", "", "<strong>" + Q.icone + " " + Q.mot + "</strong> " + Q.bilan));
+    texteLu += Q.mot + " " + Q.bilan + " ";
+  });
+  c.appendChild(liste);
+  c.appendChild(el("p", "", "👩‍🏫 <strong>Tu peux maintenant écouter ton professeur pour la suite de la séance.</strong>"));
+  if (peutLire()) {
+    var bf = el("button", "petit", "🔊 Écouter ce que j'ai trouvé");
+    bf.onclick = function () { lire(texteLu); };
+    c.appendChild(bf);
+  }
+  ecran.appendChild(c);
+  var b = el("button", "petit", "↩️ Revoir l'histoire");
+  b.onclick = afficherHistoire;
+  ecran.appendChild(b);
+}
+
+construireBarreVoix();
+afficherAccueil();
+</script>
+</body>
+</html>
